@@ -1,4 +1,4 @@
-namespace Quick.JGST14.ElectronicGate.Models
+namespace Quick.JGST14.ElectronicGate.Model_81
 {
     /// <summary>
     /// 采集报文
@@ -65,8 +65,29 @@ namespace Quick.JGST14.ElectronicGate.Models
         /// 驾驶员信息
         /// </summary>
         public DR_RFID DR_RFID { get; set; }
-        /*
-
-        */
+        /// <summary>
+        /// 图像
+        /// </summary>
+        public PHOTO PHOTO { get; set; }
+        /// <summary>
+        /// 监控关员
+        /// </summary>
+        public string OPERATOR_ID { get; set; }
+        /// <summary>
+        /// 操作时间
+        /// </summary>
+        public string OPERATE_TIME { get; set; }
+        /// <summary>
+        /// 扩展字段
+        /// </summary>
+        public EXTEND[] EXTEND { get; set; }
+        /// <summary>
+        /// 箱号识别
+        /// </summary>
+        public CONTA_RECOGNITION CONTA_RECOGNITION { get; set; }
+        /// <summary>
+        /// 车牌识别
+        /// </summary>
+        public VE_LICENSE_RECOGNITION VE_LICENSE_RECOGNITION { get; set; }
     }
 }

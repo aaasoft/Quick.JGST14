@@ -1,6 +1,4 @@
-using System;
-
-namespace Quick.JGST14.ElectronicGate.Models
+namespace Quick.JGST14.ElectronicGate.Model_81
 {
     /// <summary>
     /// 车辆信息

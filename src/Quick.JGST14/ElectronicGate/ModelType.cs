@@ -1,4 +1,4 @@
-namespace Quick.JGST14.ElectronicGate.Models
+namespace Quick.JGST14.ElectronicGate
 {
     public enum ModelType : byte
     {

@@ -1,4 +1,4 @@
-namespace Quick.JGST14.ElectronicGate.Models
+namespace Quick.JGST14.ElectronicGate.Model_82
 {
     /// <summary>
     /// IC卡信息

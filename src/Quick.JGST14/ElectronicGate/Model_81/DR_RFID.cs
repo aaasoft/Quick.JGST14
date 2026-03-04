@@ -1,4 +1,4 @@
-namespace Quick.JGST14.ElectronicGate.Models
+namespace Quick.JGST14.ElectronicGate.Model_81
 {
     /// <summary>
     /// 驾驶员信息
