@@ -1,5 +1,4 @@
 using System;
-using System.Buffers;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -17,6 +16,74 @@ namespace Quick.JGST14.ElectronicGate
     public class TcpCommunicateContext
     {
         /// <summary>
+        /// 包头
+        /// </summary>
+        public class PacketHead
+        {
+            public const int Size = 38;
+            public PacketHead(Memory<byte> buffer)
+            {
+                var currentMemory = buffer;
+
+                Head = currentMemory.Slice(0, 4);
+                currentMemory = currentMemory.Slice(4);
+
+                TotalLength = currentMemory.Slice(0, 4);
+                currentMemory = currentMemory.Slice(4);
+
+                DataCode = currentMemory.Slice(0, 1);
+                currentMemory = currentMemory.Slice(1);
+
+                AreaId = currentMemory.Slice(0, 10);
+                currentMemory = currentMemory.Slice(10);
+
+                ChannelId = currentMemory.Slice(0, 10);
+                currentMemory = currentMemory.Slice(10);
+
+                IeTag = currentMemory.Slice(0, 1);
+                currentMemory = currentMemory.Slice(1);
+
+                BiaoZhiFu = currentMemory.Slice(0, 4);
+                currentMemory = currentMemory.Slice(4);
+
+                XmlStreamLength = currentMemory.Slice(0, 4);
+            }
+
+            /// <summary>
+            /// 包头标记
+            /// </summary>
+            public Memory<byte> Head;
+            /// <summary>
+            /// 总长
+            /// </summary>
+            public Memory<byte> TotalLength;
+            /// <summary>
+            /// 报文代码
+            /// </summary>
+            public Memory<byte> DataCode;
+            /// <summary>
+            /// 场站号
+            /// </summary>
+            public Memory<byte> AreaId;
+            /// <summary>
+            /// 通道号
+            /// </summary>
+            public Memory<byte> ChannelId;
+            /// <summary>
+            /// 进出标志
+            /// </summary>
+            public Memory<byte> IeTag;
+            /// <summary>
+            /// 标识符
+            /// </summary>            
+            public Memory<byte> BiaoZhiFu;
+            /// <summary>
+            /// XML流长度
+            /// </summary>
+            public Memory<byte> XmlStreamLength;
+        }
+
+        /// <summary>
         /// 包头标记
         /// </summary>
         private static readonly byte[] packetStartHead = [0xE2, 0x5C, 0x4B, 0x89];
@@ -28,6 +95,9 @@ namespace Quick.JGST14.ElectronicGate
         /// 包尾标记
         /// </summary>
         private static byte[] packetEndTail = [0xFF, 0xFF];
+        private byte[] sendBuffer;
+        private byte[] recvBuffer;
+
         private TcpCommunicateContextOptions options;
         private CancellationTokenSource cts;
         private TcpListener tcpListener;
@@ -41,6 +111,8 @@ namespace Quick.JGST14.ElectronicGate
         public TcpCommunicateContext(TcpCommunicateContextOptions options)
         {
             this.options = options;
+            sendBuffer = new byte[options.SendBufferSize];
+            recvBuffer = new byte[options.RecvBufferSize];
         }
 
 
@@ -63,11 +135,10 @@ namespace Quick.JGST14.ElectronicGate
             }
         }
 
-        private bool isBufferMatchHeader(ReadOnlySequence<byte> sequence, Span<byte> buffer, byte[] header)
+        private bool isBufferMatchHeader(Span<byte> buffer, Span<byte> header)
         {
             if (buffer == null || header == null)
                 return false;
-            sequence.CopyTo(buffer);
             if (buffer.Length != header.Length)
                 return false;
             for (var i = 0; i < buffer.Length; i++)
@@ -78,20 +149,33 @@ namespace Quick.JGST14.ElectronicGate
             return true;
         }
 
-        //解析包总长度
-        private int parsePackageTotalLength(ReadOnlySequence<byte> sequence, byte[] buffer)
-        {
-            sequence.CopyTo(buffer);
-            var packageTotalLength = ByteUtils.B2I_BE(buffer, 0);
-            return packageTotalLength;
-        }
-
-        private string parseDecimalString(Span<byte> span)
+        private string ToDecimalString(Span<byte> span)
         {
             var sb = new StringBuilder();
             for (var i = 0; i < span.Length; i++)
                 sb.Append(span[i].ToString());
             return sb.ToString();
+        }
+
+        private byte[] FromDecimalString(string text)
+        {
+            var array = new byte[text.Length];
+            for (var i = 0; i < text.Length; i++)
+            {
+                var c = text[i];
+                array[i] = byte.Parse(c.ToString());
+            }
+            return array;
+        }
+
+        private int Serialize<T>(T t, byte[] buffer, int start, int length)
+        {
+            using (var ms = new MemoryStream(buffer, start, length))
+            {
+                var serializer = new XmlSerializer(typeof(T));
+                serializer.Serialize(ms, t);
+                return (int)ms.Position;
+            }
         }
 
         private T Deserialize<T>(byte[] buffer, int start, int length)
@@ -103,136 +187,88 @@ namespace Quick.JGST14.ElectronicGate
             }
         }
 
+        private async Task beginReadFromStream(Stream stream, CancellationToken cancellationToken)
+        {
+            int index = 0;
+            var freeRecvMemory = new Memory<byte>(recvBuffer);
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                //读取包头
+                var packetHeadMemory = freeRecvMemory.Slice(0, PacketHead.Size);
+                await stream.ReadExactlyAsync(packetHeadMemory);
+                freeRecvMemory = freeRecvMemory.Slice(PacketHead.Size);
+                index += PacketHead.Size;
+
+                var packetHead = new PacketHead(packetHeadMemory);
+                //检查包头标记是否匹配
+                if (!isBufferMatchHeader(packetHead.Head.Span, packetStartHead))
+                {
+                    throw new IOException($"接收到的包头标记[{BitConverter.ToString(packetHead.Head.ToArray())}]不正确。");
+                }
+                //读取包长度
+                var packetTotalLength = ByteUtils.B2I_BE(packetHead.TotalLength);
+                //读取报文代码
+                var modelType = (ModelType)packetHead.DataCode.Span[0];
+                //读取场站号
+                var areaId = ToDecimalString(packetHead.AreaId.Span);
+                //读取通道号
+                var channelId = ToDecimalString(packetHead.ChannelId.Span);
+                //读取进出标志
+                var ieFlag = char.ConvertFromUtf32(packetHead.IeTag.Span[0]);
+                //检查标志符是否匹配
+                if (!isBufferMatchHeader(packetHead.BiaoZhiFu.Span, packetTagHead))
+                {
+                    throw new IOException($"接收到的标志符[{BitConverter.ToString(packetHead.BiaoZhiFu.ToArray())}]不正确。");
+                }
+                //读取XML流长度
+                var xmlTotalLength = ByteUtils.B2I_BE(packetHead.XmlStreamLength);
+                //读取XML格式数据
+                var xmlContentMemory = freeRecvMemory.Slice(0, xmlTotalLength);
+                await stream.ReadExactlyAsync(xmlContentMemory, cancellationToken);
+                switch (modelType)
+                {
+                    case ModelType.GatherInfo:
+                        GatherInfoReceived?.Invoke(this, Deserialize<Model_81.GATHER_INFO>(recvBuffer, index, xmlTotalLength));
+                        break;
+                    case ModelType.GatherFeedback:
+                        GatherFeedbackReceived?.Invoke(this, Deserialize<Model_82.GATHER_FEEDBACK>(recvBuffer, index, xmlTotalLength));
+                        break;
+                    case ModelType.OperateInfo:
+                        OperateInfoReceived?.Invoke(this, Deserialize<Model_83.OPERATE_INFO>(recvBuffer, index, xmlTotalLength));
+                        break;
+                    case ModelType.OperateFeedback:
+                        OperateFeedbackReceived?.Invoke(this, Deserialize<Model_84.OPERATE_FEEDBACK>(recvBuffer, index, xmlTotalLength));
+                        break;
+                    case ModelType.ManualCheck:
+                        ManualCheckReceived?.Invoke(this, Deserialize<Model_85.MANUAL_CHECK>(recvBuffer, index, xmlTotalLength));
+                        break;
+                }
+                index += xmlTotalLength;
+                //读取包尾标记
+                var headTailMemory = freeRecvMemory.Slice(0, 2);
+                await stream.ReadExactlyAsync(headTailMemory, cancellationToken);
+                //检查包尾标记是否匹配
+                if (!isBufferMatchHeader(headTailMemory.Span, packetEndTail))
+                {
+                    throw new IOException($"接收到的包尾标记[{BitConverter.ToString(recvBuffer, index, headTailMemory.Length)}]不正确。");
+                }
+                index += headTailMemory.Length;
+            }
+        }
+
         private async Task beginReadClient(TcpClient tcpClient, CancellationToken cancellationToken)
         {
             options.Logger?.Invoke($"[{tcpClient.Client.RemoteEndPoint}]已经连接，开始从接收数据。。。");
-            var pipe = new System.IO.Pipelines.Pipe();
-            var reader = pipe.Reader;
-            var writer = pipe.Writer;
-            //从网络流中读取，写入到管道中
-            _ = Task.Run(async () =>
+            try
             {
-                try
-                {
-                    var buffer = new byte[1024];
-                    using (var ns = tcpClient.GetStream())
-                    {
-                        var ret = await ns.ReadAsync(buffer, 0, buffer.Length, cancellationToken);
-                        if (ret > 0)
-                        {
-                            await writer.WriteAsync(new System.ReadOnlyMemory<byte>(buffer, 0, ret), cancellationToken);
-                            await writer.FlushAsync(cancellationToken);
-                        }
-                    }
-                }
-                catch(Exception ex)
-                {
-                    options.Logger?.Invoke($"从[{tcpClient.Client.RemoteEndPoint}]接收数据时出错，原因：{ex}");
-                    tcpClient.Dispose();
-                }
-                finally
-                {
-                    await writer.CompleteAsync();
-                }
-            });
-            //从管道中读取数据
-            _ = Task.Run(async () =>
+                using (var stream = tcpClient.GetStream())
+                    await beginReadFromStream(stream, cancellationToken);
+            }
+            catch (Exception ex)
             {
-                var buffer = new byte[1024];
-                try
-                {
-                    while (!cancellationToken.IsCancellationRequested)
-                    {
-                        //读取包头
-                        var ret = await reader.ReadAtLeastAsync(packetStartHead.Length, cancellationToken);
-                        //如果包头不匹配
-                        if (!isBufferMatchHeader(ret.Buffer, buffer, packetStartHead))
-                            break;
-                        reader.AdvanceTo(ret.Buffer.End);
-
-                        //读取包长度
-                        ret = await reader.ReadAtLeastAsync(4, cancellationToken);
-                        var packetTotalLength = parsePackageTotalLength(ret.Buffer, buffer);
-                        reader.AdvanceTo(ret.Buffer.End);
-
-                        //读取报文代码
-                        ret = await reader.ReadAtLeastAsync(1, cancellationToken);
-                        ret.Buffer.CopyTo(buffer);
-                        reader.AdvanceTo(ret.Buffer.End);
-                        var modelType = (ModelType)buffer[0];
-
-                        //读取场站号
-                        ret = await reader.ReadAtLeastAsync(10, cancellationToken);
-                        ret.Buffer.CopyTo(buffer);
-                        reader.AdvanceTo(ret.Buffer.End);
-                        var areaId = parseDecimalString(new Span<byte>(buffer, 0, 10));
-
-                        //读取通道号
-                        ret = await reader.ReadAtLeastAsync(10, cancellationToken);
-                        ret.Buffer.CopyTo(buffer);
-                        reader.AdvanceTo(ret.Buffer.End);
-                        var channelId = parseDecimalString(new Span<byte>(buffer, 0, 10));
-
-                        //读取进出标志
-                        ret = await reader.ReadAtLeastAsync(1, cancellationToken);
-                        ret.Buffer.CopyTo(buffer);
-                        reader.AdvanceTo(ret.Buffer.End);
-                        var ieFlag = Encoding.Default.GetString(buffer, 0, 1);
-
-                        //读取标识符
-                        ret = await reader.ReadAtLeastAsync(packetTagHead.Length, cancellationToken);
-                        //如果标识符不匹配
-                        if (!isBufferMatchHeader(ret.Buffer, buffer, packetTagHead))
-                            break;
-                        reader.AdvanceTo(ret.Buffer.End);
-
-                        //读取XML流长度
-                        ret = await reader.ReadAtLeastAsync(4, cancellationToken);
-                        var xmlTotalLength = parsePackageTotalLength(ret.Buffer, buffer);
-                        reader.AdvanceTo(ret.Buffer.End);
-
-                        //读取XML格式数据
-                        ret = await reader.ReadAtLeastAsync(xmlTotalLength, cancellationToken);
-                        ret.Buffer.CopyTo(buffer);
-                        reader.AdvanceTo(ret.Buffer.End);
-
-                        switch (modelType)
-                        {
-                            case ModelType.GatherInfo:
-                                GatherInfoReceived?.Invoke(this, Deserialize<Model_81.GATHER_INFO>(buffer, 0, xmlTotalLength));
-                                break;
-                            case ModelType.GatherFeedback:
-                                GatherFeedbackReceived?.Invoke(this, Deserialize<Model_82.GATHER_FEEDBACK>(buffer, 0, xmlTotalLength));
-                                break;
-                            case ModelType.OperateInfo:
-                                OperateInfoReceived?.Invoke(this, Deserialize<Model_83.OPERATE_INFO>(buffer, 0, xmlTotalLength));
-                                break;
-                            case ModelType.OperateFeedback:
-                                OperateFeedbackReceived?.Invoke(this, Deserialize<Model_84.OPERATE_FEEDBACK>(buffer, 0, xmlTotalLength));
-                                break;
-                            case ModelType.ManualCheck:
-                                ManualCheckReceived?.Invoke(this, Deserialize<Model_85.MANUAL_CHECK>(buffer, 0, xmlTotalLength));
-                                break;
-                        }
-
-                        //读取包尾
-                        ret = await reader.ReadAtLeastAsync(packetEndTail.Length, cancellationToken);
-                        //如果包尾不匹配
-                        if (!isBufferMatchHeader(ret.Buffer, buffer, packetEndTail))
-                            break;
-                        reader.AdvanceTo(ret.Buffer.End);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    options.Logger?.Invoke($"从[{tcpClient.Client.RemoteEndPoint}]解析数据时出错，原因：{ex}");
-                    tcpClient.Dispose();
-                }
-                finally
-                {
-                    await reader.CompleteAsync();
-                }
-            });
+                options.Logger?.Invoke($"从[{tcpClient.Client.RemoteEndPoint}]接收解析数据时出错，原因：{ex}");
+                tcpClient.Dispose();
+            }
         }
 
         public void Stop()
@@ -245,17 +281,69 @@ namespace Quick.JGST14.ElectronicGate
 
         public async Task SendGatherInfoAsync(Model_81.GATHER_INFO model, CancellationToken cancellationToken = default)
         {
+            await SendAsync(model.AREA_ID, model.CHNL_NO, ModelType.GatherInfo, model.I_E_FLAG, model, cancellationToken);
+        }
+
+        public async Task SendGatherFeedbackAsync(Model_82.GATHER_FEEDBACK model, string ieFlag, CancellationToken cancellationToken = default)
+        {
+            await SendAsync(model.AREA_ID, model.CHNL_NO, ModelType.GatherFeedback, ieFlag, model, cancellationToken);
+        }
+
+        public async Task SendOperateInfoAsync(Model_83.OPERATE_INFO model, string ieFlag, CancellationToken cancellationToken = default)
+        {
+            await SendAsync(model.AREA_ID, model.CHNL_NO, ModelType.OperateInfo, ieFlag, model, cancellationToken);
+        }
+
+        public async Task SendOperateFeedbackAsync(Model_84.OPERATE_FEEDBACK model, string ieFlag, CancellationToken cancellationToken = default)
+        {
+            await SendAsync(model.AREA_ID, model.CHNL_NO, ModelType.OperateFeedback, ieFlag, model, cancellationToken);
+        }
+
+        public async Task SendManualCheckAsync(Model_85.MANUAL_CHECK model, string ieFlag, CancellationToken cancellationToken = default)
+        {
+            await SendAsync(model.AREA_ID, model.CHNL_NO, ModelType.ManualCheck, ieFlag, model, cancellationToken);
+        }
+
+        private async Task SendAsync<T>(string areaId, string channelId, ModelType modelType, string ieTag, T model, CancellationToken cancellationToken = default)
+        {            
+            //写入XML流内容
+            var xmlStreamLengthNumber = Serialize(model, sendBuffer, PacketHead.Size, sendBuffer.Length - PacketHead.Size);
+
+            //写入包头
+            var xmlStreamLength = BitConverter.GetBytes(xmlStreamLengthNumber);
+            if (BitConverter.IsLittleEndian)
+                Array.Reverse(xmlStreamLength);
+
+            var totalLengthNumber = PacketHead.Size + xmlStreamLengthNumber + packetEndTail.Length;
+            var totalLength = BitConverter.GetBytes(totalLengthNumber);
+            if (BitConverter.IsLittleEndian)
+                Array.Reverse(totalLength);
+
+            var packetHead = new PacketHead(sendBuffer);
+            packetStartHead.CopyTo(packetHead.Head);
+            packetTagHead.CopyTo(packetHead.BiaoZhiFu);
+            FromDecimalString(areaId).CopyTo(packetHead.AreaId);
+            FromDecimalString(channelId).CopyTo(packetHead.ChannelId);
+            packetHead.DataCode.Span[0] = (byte)modelType;
+            packetHead.IeTag.Span[0] =Encoding.Default.GetBytes(ieTag)[0];
+            xmlStreamLength.CopyTo(packetHead.XmlStreamLength);
+            totalLength.CopyTo(packetHead.TotalLength);
+
+            //写入包尾
+            packetEndTail.CopyTo(sendBuffer, PacketHead.Size + xmlStreamLengthNumber);
+
             using (var tcpClient = new TcpClient())
             {
                 //连接
                 await tcpClient.ConnectAsync(IPAddress.Parse(options.RemoteHost), options.RemotePort, cancellationToken);
-                using(var ns = tcpClient.GetStream())
+                using (var ns = tcpClient.GetStream())
                 {
-                    //写入包头
-                    await ns.WriteAsync(packetStartHead,cancellationToken);
-                    //写入
-                    
+                    await ns.WriteAsync(sendBuffer, 0, totalLengthNumber, cancellationToken);
+                    await ns.FlushAsync();
                 }
+                options.Logger?.Invoke($"已向[{options.RemoteHost}:{options.RemotePort}]发送数据。数据大小：{totalLengthNumber}，数据内容：{BitConverter.ToString(sendBuffer, 0, totalLengthNumber)}");
+                tcpClient.Close();
+                tcpClient.Dispose();
             }
         }
     }
