@@ -224,6 +224,7 @@ namespace Quick.JGST14.ElectronicGate
                 var xmlTotalLength = ByteUtils.B2I_BE(packetHead.XmlStreamLength);
                 //读取XML格式数据
                 var xmlContentMemory = freeRecvMemory.Slice(0, xmlTotalLength);
+                freeRecvMemory = freeRecvMemory.Slice(xmlTotalLength);
                 await stream.ReadExactlyAsync(xmlContentMemory, cancellationToken);
                 switch (modelType)
                 {
@@ -246,6 +247,7 @@ namespace Quick.JGST14.ElectronicGate
                 index += xmlTotalLength;
                 //读取包尾标记
                 var headTailMemory = freeRecvMemory.Slice(0, 2);
+                freeRecvMemory = freeRecvMemory.Slice(2);
                 await stream.ReadExactlyAsync(headTailMemory, cancellationToken);
                 //检查包尾标记是否匹配
                 if (!isBufferMatchHeader(headTailMemory.Span, packetEndTail))
@@ -305,7 +307,7 @@ namespace Quick.JGST14.ElectronicGate
         }
 
         private async Task SendAsync<T>(string areaId, string channelId, ModelType modelType, string ieTag, T model, CancellationToken cancellationToken = default)
-        {            
+        {
             //写入XML流内容
             var xmlStreamLengthNumber = Serialize(model, sendBuffer, PacketHead.Size, sendBuffer.Length - PacketHead.Size);
 
@@ -325,7 +327,7 @@ namespace Quick.JGST14.ElectronicGate
             FromDecimalString(areaId).CopyTo(packetHead.AreaId);
             FromDecimalString(channelId).CopyTo(packetHead.ChannelId);
             packetHead.DataCode.Span[0] = (byte)modelType;
-            packetHead.IeTag.Span[0] =Encoding.Default.GetBytes(ieTag)[0];
+            packetHead.IeTag.Span[0] = Encoding.Default.GetBytes(ieTag)[0];
             xmlStreamLength.CopyTo(packetHead.XmlStreamLength);
             totalLength.CopyTo(packetHead.TotalLength);
 
