@@ -19,7 +19,7 @@ namespace Quick.JGST14.ElectronicGate
         /// </summary>
         OperateFeedback = 0x84,
         /// <summary>
-        /// 人工确认报文
+        /// 人工确认
         /// </summary>
         ManualCheck = 0x85,
     }
