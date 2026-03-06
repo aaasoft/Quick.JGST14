@@ -3,8 +3,9 @@ namespace Quick.JGST14.ElectronicGate.Model_85
     /// <summary>
     /// 人工确认
     /// </summary>
-    public class MANUAL_CHECK
+    public class MANUAL_CHECK : IModel
     {
+        public DataType GetDataType() => DataType.ManualCheck;
         /// <summary>
         /// 场站编号
         /// </summary>

@@ -3,8 +3,10 @@ namespace Quick.JGST14.ElectronicGate.Model_81
     /// <summary>
     /// 采集报文
     /// </summary>
-    public class GATHER_INFO
+    public class GATHER_INFO : IModel
     {
+        public DataType GetDataType()=> DataType.GatherInfo;
+        
         /// <summary>
         /// 进出口标志。I：进口、E：出口
         /// </summary>

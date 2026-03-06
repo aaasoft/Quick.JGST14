@@ -3,8 +3,9 @@ namespace Quick.JGST14.ElectronicGate.Model_84
     /// <summary>
     /// 设备操作
     /// </summary>
-    public class OPERATE_FEEDBACK
+    public class OPERATE_FEEDBACK : IModel
     {
+        public DataType GetDataType() => DataType.OperateFeedback;
         /// <summary>
         /// 场站编号
         /// </summary>

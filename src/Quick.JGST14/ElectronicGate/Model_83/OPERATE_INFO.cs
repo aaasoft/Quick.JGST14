@@ -3,8 +3,9 @@ namespace Quick.JGST14.ElectronicGate.Model_83
     /// <summary>
     /// 设备操作
     /// </summary>
-    public class OPERATE_INFO
+    public class OPERATE_INFO : IModel
     {
+        public DataType GetDataType() => DataType.OperateInfo;
         /// <summary>
         /// 场站编号
         /// </summary>

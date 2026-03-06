@@ -1,6 +1,9 @@
 namespace Quick.JGST14.ElectronicGate
 {
-    public enum ModelType : byte
+    /// <summary>
+    /// 数据类型
+    /// </summary>
+    public enum DataType : byte
     {
         /// <summary>
         /// 采集报文

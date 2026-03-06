@@ -3,8 +3,9 @@ namespace Quick.JGST14.ElectronicGate.Model_82
     /// <summary>
     /// 采集反馈
     /// </summary>
-    public class GATHER_FEEDBACK
+    public class GATHER_FEEDBACK : IModel
     {
+        public DataType GetDataType() => DataType.GatherFeedback;
         /// <summary>
         /// 场站编号
         /// </summary>
