@@ -240,6 +240,10 @@ public class TcpCommunicatePacket
         TotalLength = totalLength;
         //设置XML流长度
         XmlStreamLength = xmlStreamLength;
+        //设置XML流Memory
+        XmlStreamMemory = new Memory<byte>(buffer, HEAD_SIZE, xmlStreamLength);
+        //设置包尾Memory
+        TailMarkMemory = new Memory<byte>(buffer, HEAD_SIZE + xmlStreamLength, TAIL_MARK.Length);
         //设置包尾
         TAIL_MARK.CopyTo(TailMarkMemory);
     }

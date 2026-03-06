@@ -30,4 +30,8 @@ var tcpCommunicateContext = new TcpCommunicateContext(new()
     RemotePort = 5000,
     Logger = Console.WriteLine
 });
+tcpCommunicateContext.GatherInfoReceived +=(sender,e)=>
+{
+    Console.WriteLine();
+};
 await tcpCommunicateContext.SendGatherInfoAsync(gatherInfo);

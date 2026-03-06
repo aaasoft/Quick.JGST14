@@ -60,9 +60,8 @@ namespace Quick.JGST14.ElectronicGate
                 var slimHeadMemory = freeRecvMemory.Slice(0, TcpCommunicatePacket.SLIM_HEAD_SIZE);
                 await stream.ReadExactlyAsync(slimHeadMemory);
                 var totalLength = TcpCommunicatePacket.ParseTotalLength(slimHeadMemory.Span);
-                var leftBodyMemory = freeRecvMemory.Slice(TcpCommunicatePacket.HEAD_SIZE, totalLength - TcpCommunicatePacket.SLIM_HEAD_SIZE);
                 //读取包剩余部分
-                await stream.ReadExactlyAsync(leftBodyMemory);
+                await stream.ReadExactlyAsync(recvBuffer, TcpCommunicatePacket.SLIM_HEAD_SIZE, totalLength - TcpCommunicatePacket.SLIM_HEAD_SIZE);
                 //解析包
                 var packet = new TcpCommunicatePacket(recvBuffer, true);
                 switch (packet.DataType)
@@ -158,6 +157,8 @@ namespace Quick.JGST14.ElectronicGate
                 tcpClient.Close();
                 tcpClient.Dispose();
             }
+            //For self test
+            //_ = beginReadFromStream(new MemoryStream(sendBuffer), cancellationToken);
         }
     }
 }
