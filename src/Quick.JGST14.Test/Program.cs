@@ -27,11 +27,13 @@ using (var ms = new MemoryStream())
 var tcpCommunicateContext = new TcpCommunicateContext(new()
 {
     RemoteHost = "127.0.0.1",
-    RemotePort = 5000,
+    RemotePort = 5001,
     Logger = Console.WriteLine
 });
 tcpCommunicateContext.GatherInfoReceived +=(sender,e)=>
 {
     Console.WriteLine();
 };
-await tcpCommunicateContext.SendGatherInfoAsync(gatherInfo);
+tcpCommunicateContext.Start();
+//await tcpCommunicateContext.SendGatherInfoAsync(gatherInfo);
+Console.ReadLine();

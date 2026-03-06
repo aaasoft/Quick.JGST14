@@ -83,7 +83,7 @@ public class TcpCommunicatePacket
         if (hasData)
         {
             var xmlStreamLength = XmlStreamLength;
-            XmlStreamMemory = SliceMemory(xmlStreamLength, ref currentMemory);
+            SliceMemory(xmlStreamLength, ref currentMemory);
             TailMarkMemory = SliceMemory(2, ref currentMemory);
             //检查包尾
             if (!IsBufferMatchHeader(TailMarkMemory.Span, TAIL_MARK))
@@ -162,15 +162,12 @@ public class TcpCommunicatePacket
         set => ToSpan(value, XmlStreamLengthMemory.Span);
     }
 
-    private Memory<byte> XmlStreamMemory;
     private Memory<byte> TailMarkMemory;
 
 
 
     private static bool IsBufferMatchHeader(Span<byte> buffer, Span<byte> header)
     {
-        if (buffer == null || header == null)
-            return false;
         if (buffer.Length != header.Length)
             return false;
         for (var i = 0; i < buffer.Length; i++)
@@ -240,8 +237,6 @@ public class TcpCommunicatePacket
         TotalLength = totalLength;
         //设置XML流长度
         XmlStreamLength = xmlStreamLength;
-        //设置XML流Memory
-        XmlStreamMemory = new Memory<byte>(buffer, HEAD_SIZE, xmlStreamLength);
         //设置包尾Memory
         TailMarkMemory = new Memory<byte>(buffer, HEAD_SIZE + xmlStreamLength, TAIL_MARK.Length);
         //设置包尾

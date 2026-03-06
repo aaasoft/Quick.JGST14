@@ -88,7 +88,8 @@ namespace Quick.JGST14.ElectronicGate
 
         private async Task beginReadClient(TcpClient tcpClient, CancellationToken cancellationToken)
         {
-            options.Logger?.Invoke($"[{tcpClient.Client.RemoteEndPoint}]已经连接，开始从接收数据。。。");
+            var remoteEndPoint =tcpClient.Client.RemoteEndPoint.ToString();
+            options.Logger?.Invoke($"[{remoteEndPoint}]已经连接，开始从接收数据。。。");
             try
             {
                 using (var stream = tcpClient.GetStream())
@@ -96,8 +97,8 @@ namespace Quick.JGST14.ElectronicGate
             }
             catch (Exception ex)
             {
-                options.Logger?.Invoke($"从[{tcpClient.Client.RemoteEndPoint}]接收解析数据时出错，原因：{ex}");
-                tcpClient.Dispose();
+                tcpClient.Dispose();                
+                options.Logger?.Invoke($"[{remoteEndPoint}]的连接已经断开。接收解析数据时出错，原因：{ex.Message}");
             }
         }
 
