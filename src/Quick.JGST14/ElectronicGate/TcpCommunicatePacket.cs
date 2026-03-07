@@ -178,22 +178,8 @@ public class TcpCommunicatePacket
         return true;
     }
 
-    private string ToString(Span<byte> span)
-    {
-        var sb = new StringBuilder();
-        for (var i = 0; i < span.Length; i++)
-            sb.Append(span[i].ToString());
-        return sb.ToString();
-    }
-
-    private void ToSpan(string value, Span<byte> span)
-    {
-        for (var i = 0; i < value.Length; i++)
-        {
-            var c = value[i];
-            span[i] = byte.Parse(c.ToString());
-        }
-    }
+    private string ToString(Span<byte> span) => Encoding.Default.GetString(span);
+    private void ToSpan(string value, Span<byte> span) => Encoding.Default.GetBytes(value, span);
 
     private static int ToInt32(Span<byte> span)
     {
@@ -215,6 +201,25 @@ public class TcpCommunicatePacket
             span.Reverse();
     }
 
+    private void AfterSetXml(int xmlStreamLength)
+    {
+        var totalLength = HEAD_SIZE + xmlStreamLength + TAIL_MARK.Length;
+        //设置总长度
+        TotalLength = totalLength;
+        //设置XML流长度
+        XmlStreamLength = xmlStreamLength;
+        //设置包尾Memory
+        TailMarkMemory = new Memory<byte>(buffer, HEAD_SIZE + xmlStreamLength, TAIL_MARK.Length);
+        //设置包尾
+        TAIL_MARK.CopyTo(TailMarkMemory);
+    }
+
+    public void SetXml(string xml)
+    {
+        var xmlStreamLength = Encoding.Default.GetBytes(xml, new Span<byte>(buffer, HEAD_SIZE, buffer.Length - HEAD_SIZE));
+        AfterSetXml(xmlStreamLength);
+    }
+
     public void SetXmlModel<T>(T t)
         where T : IModel
     {
@@ -232,15 +237,7 @@ public class TcpCommunicatePacket
             serializer.Serialize(ms, t);
             xmlStreamLength = (int)ms.Position;
         }
-        var totalLength = HEAD_SIZE + xmlStreamLength + TAIL_MARK.Length;
-        //设置总长度
-        TotalLength = totalLength;
-        //设置XML流长度
-        XmlStreamLength = xmlStreamLength;
-        //设置包尾Memory
-        TailMarkMemory = new Memory<byte>(buffer, HEAD_SIZE + xmlStreamLength, TAIL_MARK.Length);
-        //设置包尾
-        TAIL_MARK.CopyTo(TailMarkMemory);
+        AfterSetXml(xmlStreamLength);
     }
 
     public T GetXmlModel<T>()
