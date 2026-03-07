@@ -3,5 +3,7 @@
   <PropertyGroup>
     <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
     <LangVersion>13.0</LangVersion>
+    <Version>1.0.0</Version>
+		<Description>海关金关工程二期工程标准-海关物流监控前端集成系统建设-数据接口(JGS/T 14-2015)</Description>
   </PropertyGroup>
 </Project>
