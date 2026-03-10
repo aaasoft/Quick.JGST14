@@ -88,7 +88,7 @@ namespace Quick.JGST14.ElectronicGate
 
         private async Task beginReadClient(TcpClient tcpClient, CancellationToken cancellationToken)
         {
-            var remoteEndPoint =tcpClient.Client.RemoteEndPoint.ToString();
+            var remoteEndPoint = tcpClient.Client.RemoteEndPoint.ToString();
             options.Logger?.Invoke($"[{remoteEndPoint}]已经连接，开始从接收数据。。。");
             try
             {
@@ -97,7 +97,7 @@ namespace Quick.JGST14.ElectronicGate
             }
             catch (Exception ex)
             {
-                tcpClient.Dispose();                
+                tcpClient.Dispose();
                 options.Logger?.Invoke($"[{remoteEndPoint}]的连接已经断开。接收解析数据时出错，原因：{ex.Message}");
             }
         }
@@ -135,15 +135,8 @@ namespace Quick.JGST14.ElectronicGate
             await SendAsync(model, ieFlag, cancellationToken);
         }
 
-        private async Task SendAsync<T>(T model, string ieFlag, CancellationToken cancellationToken = default)
-            where T : IModel
+        public async Task SendAsync(TcpCommunicatePacket packet, CancellationToken cancellationToken = default)
         {
-            var packet = new TcpCommunicatePacket(sendBuffer, false)
-            {
-                IeFlag = ieFlag
-            };
-            packet.SetXmlModel(model);
-
             var totalLength = packet.TotalLength;
             using (var tcpClient = new TcpClient())
             {
@@ -160,6 +153,30 @@ namespace Quick.JGST14.ElectronicGate
             }
             //For self test
             //_ = beginReadFromStream(new MemoryStream(sendBuffer), cancellationToken);
+        }
+
+        public async Task SendAsync(string xml, DataType dataType, string areaId, string channelId, string ieFlag, CancellationToken cancellationToken = default)
+        {
+            var packet = new TcpCommunicatePacket(sendBuffer, false)
+            {
+                AreaId = areaId,
+                ChannelId = channelId,
+                DataType = dataType,
+                IeFlag = ieFlag
+            };
+            packet.SetXml(xml);
+            await SendAsync(packet);
+        }
+
+        public async Task SendAsync<T>(T model, string ieFlag, CancellationToken cancellationToken = default)
+            where T : IModel
+        {
+            var packet = new TcpCommunicatePacket(sendBuffer, false)
+            {
+                IeFlag = ieFlag
+            };
+            packet.SetXmlModel(model);
+            await SendAsync(packet);
         }
     }
 }
