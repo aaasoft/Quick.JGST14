@@ -10,7 +10,7 @@ namespace Quick.JGST14.ElectronicGate
     /// <summary>
     /// TCP通讯上下文
     /// </summary>
-    public class TcpCommunicateContext
+    public class TcpCommunicateContext : ICommunicateContext
     {
         private byte[] sendBuffer;
         private byte[] recvBuffer;
