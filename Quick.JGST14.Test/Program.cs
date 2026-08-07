@@ -3,7 +3,6 @@ using System.Xml.Serialization;
 using Quick.JGST14.ElectronicGate;
 using Quick.JGST14.ElectronicGate.Model_81;
 
-var serializer_81 = new XmlSerializer(typeof(GATHER_INFO));
 var gatherInfo = new GATHER_INFO()
 {
     AREA_ID = "1000000001",
@@ -17,23 +16,43 @@ var gatherInfo = new GATHER_INFO()
         DR_NAME = "张三"
     }
 };
-using (var ms = new MemoryStream())
+ICommunicateContext communicateContext;
+var testType = "WebService";
+switch (testType)
 {
-    serializer_81.Serialize(ms, gatherInfo);
-    var str = Encoding.UTF8.GetString(ms.ToArray());
-    Console.WriteLine(str);
+    case "TCP":
+        communicateContext = new TcpCommunicateContext(new()
+        {
+            RemoteHost = "127.0.0.1",
+            RemotePort = 5001,
+            Logger = Console.WriteLine
+        });
+        break;
+    case "WebService":
+        communicateContext = new WebServiceCommunicateContext(new()
+        {
+            Url = "http://127.0.0.1:9002/IMessageService",
+            Namespace = "http://ws.servicebus.cc",
+            InterfaceName = "IRelService",
+            MethodName = "RelMessage",
+            ParameterName = "message",
+            Logger = Console.WriteLine
+        });
+        break;
+    default:
+        throw new NotImplementedException();
 }
 
-var tcpCommunicateContext = new TcpCommunicateContext(new()
+Console.WriteLine(communicateContext.Serialize(gatherInfo));
+
+communicateContext.GatherInfoReceived += (sender, e) =>
 {
-    RemoteHost = "127.0.0.1",
-    RemotePort = 5001,
-    Logger = Console.WriteLine
-});
-tcpCommunicateContext.GatherInfoReceived +=(sender,e)=>
-{
-    Console.WriteLine();
+    Console.WriteLine($"接收到消息：{e.GetDataType()}");
 };
-tcpCommunicateContext.Start();
-//await tcpCommunicateContext.SendGatherInfoAsync(gatherInfo);
+communicateContext.GatherFeedbackReceived += (sender, e) =>
+{
+    Console.WriteLine($"接收到消息：{e.GetDataType()}");
+};
+communicateContext.Start();
+await communicateContext.SendGatherInfoAsync(gatherInfo);
 Console.ReadLine();

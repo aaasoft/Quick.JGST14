@@ -1,5 +1,3 @@
-using System;
-using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Xml.Serialization;
@@ -7,7 +5,7 @@ using Quick.JGST14.Utils;
 
 namespace Quick.JGST14.ElectronicGate;
 
-public class TcpCommunicatePacket
+internal class TcpCommunicatePacket
 {
     public const int SLIM_HEAD_SIZE = 8;
     public const int HEAD_SIZE = 38;
@@ -229,6 +227,8 @@ public class TcpCommunicatePacket
         AreaId = t.AREA_ID;
         //设置通道号
         ChannelId = t.CHNL_NO;
+        //设置进出标志
+        IeFlag = t.I_E_FLAG;
 
         var xmlStreamLength = 0;
         using (var ms = new MemoryStream(buffer, HEAD_SIZE, buffer.Length - HEAD_SIZE))
@@ -250,15 +250,5 @@ public class TcpCommunicatePacket
         }
     }
 
-    public ModelInfo<T> GetModelInfo<T>() where T : IModel
-    {
-        return new ModelInfo<T>()
-        {
-            DataType = DataType,
-            AreaId = AreaId,
-            ChannelId = ChannelId,
-            IeFlag = IeFlag,
-            Data = GetXmlModel<T>()
-        };
-    }
+    public T GetModelInfo<T>() where T : IModel => GetXmlModel<T>();
 }

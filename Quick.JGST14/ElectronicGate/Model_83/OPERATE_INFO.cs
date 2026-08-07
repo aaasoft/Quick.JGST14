@@ -7,6 +7,10 @@ namespace Quick.JGST14.ElectronicGate.Model_83
     {
         public DataType GetDataType() => DataType.OperateInfo;
         /// <summary>
+        /// 进出口标志。I：进口、E：出口
+        /// </summary>
+        public string I_E_FLAG { get; set; }
+        /// <summary>
         /// 场站编号
         /// </summary>
         public string AREA_ID { get; set; }

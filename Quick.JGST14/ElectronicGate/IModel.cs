@@ -11,6 +11,10 @@ public interface IModel
     /// </summary>
     string CHNL_NO { get; set; }
     /// <summary>
+    /// 进出标志
+    /// </summary>
+    string I_E_FLAG { get; set; }
+    /// <summary>
     /// 会话编号
     /// </summary>
     string SESSION_ID { get; set; }
