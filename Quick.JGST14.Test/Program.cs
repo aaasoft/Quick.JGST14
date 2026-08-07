@@ -16,12 +16,12 @@ var gatherInfo = new GATHER_INFO()
         DR_NAME = "张三"
     }
 };
-ICommunicateContext communicateContext;
+IGateClient communicateContext;
 var testType = "WebService";
 switch (testType)
 {
     case "TCP":
-        communicateContext = new TcpCommunicateContext(new()
+        communicateContext = new TcpGateClient(new()
         {
             RemoteHost = "127.0.0.1",
             RemotePort = 5001,
@@ -29,7 +29,7 @@ switch (testType)
         });
         break;
     case "WebService":
-        communicateContext = new WebServiceCommunicateContext(new()
+        communicateContext = new WebServiceGateClient(new()
         {
             Url = "http://127.0.0.1:9002/IMessageService",
             Namespace = "http://ws.servicebus.cc",

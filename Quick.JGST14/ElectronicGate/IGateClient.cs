@@ -1,6 +1,6 @@
 namespace Quick.JGST14.ElectronicGate;
 
-public interface ICommunicateContext
+public interface IGateClient
 {
     event EventHandler<Model_81.GATHER_INFO> GatherInfoReceived;
     event EventHandler<Model_82.GATHER_FEEDBACK> GatherFeedbackReceived;

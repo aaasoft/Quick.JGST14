@@ -4,18 +4,18 @@ using System.Net.Sockets;
 namespace Quick.JGST14.ElectronicGate;
 
 /// <summary>
-/// TCP通讯上下文
+/// TCP卡口客户端
 /// </summary>
-public class TcpCommunicateContext : AbstractCommunicateContext
+public class TcpGateClient : AbstractGateClient
 {
     private byte[] sendBuffer;
     private byte[] recvBuffer;
 
-    private TcpCommunicateContextOptions options;
+    private TcpGateClientOptions options;
     private CancellationTokenSource cts;
     private TcpListener tcpListener;
 
-    public TcpCommunicateContext(TcpCommunicateContextOptions options)
+    public TcpGateClient(TcpGateClientOptions options)
     {
         this.options = options;
         sendBuffer = new byte[options.SendBufferSize];
@@ -47,13 +47,13 @@ public class TcpCommunicateContext : AbstractCommunicateContext
         while (!cancellationToken.IsCancellationRequested)
         {
             //读取简易包头
-            var slimHeadMemory = freeRecvMemory.Slice(0, TcpCommunicatePacket.SLIM_HEAD_SIZE);
+            var slimHeadMemory = freeRecvMemory.Slice(0, TcpGatePacket.SLIM_HEAD_SIZE);
             await stream.ReadExactlyAsync(slimHeadMemory);
-            var totalLength = TcpCommunicatePacket.ParseTotalLength(slimHeadMemory.Span);
+            var totalLength = TcpGatePacket.ParseTotalLength(slimHeadMemory.Span);
             //读取包剩余部分
-            await stream.ReadExactlyAsync(recvBuffer, TcpCommunicatePacket.SLIM_HEAD_SIZE, totalLength - TcpCommunicatePacket.SLIM_HEAD_SIZE);
+            await stream.ReadExactlyAsync(recvBuffer, TcpGatePacket.SLIM_HEAD_SIZE, totalLength - TcpGatePacket.SLIM_HEAD_SIZE);
             //解析包
-            var packet = new TcpCommunicatePacket(recvBuffer, true);
+            var packet = new TcpGatePacket(recvBuffer, true);
             switch (packet.DataType)
             {
                 case DataType.GatherInfo:
@@ -100,7 +100,7 @@ public class TcpCommunicateContext : AbstractCommunicateContext
         tcpListener = null;
     }
 
-    private async Task SendAsync(TcpCommunicatePacket packet, CancellationToken cancellationToken = default)
+    private async Task SendAsync(TcpGatePacket packet, CancellationToken cancellationToken = default)
     {
         var totalLength = packet.TotalLength;
         using (var tcpClient = new TcpClient())
@@ -123,7 +123,7 @@ public class TcpCommunicateContext : AbstractCommunicateContext
     public override async Task SendAsync(string xml, CancellationToken cancellationToken = default)
     {
         var model = Deserialize(xml);
-        var packet = new TcpCommunicatePacket(sendBuffer, false)
+        var packet = new TcpGatePacket(sendBuffer, false)
         {
             AreaId = model.AREA_ID,
             ChannelId = model.CHNL_NO,
@@ -136,7 +136,7 @@ public class TcpCommunicateContext : AbstractCommunicateContext
 
     public override async Task SendAsync<T>(T model, CancellationToken cancellationToken = default)
     {
-        var packet = new TcpCommunicatePacket(sendBuffer, false);
+        var packet = new TcpGatePacket(sendBuffer, false);
         packet.SetXmlModel(model);
         await SendAsync(packet);
     }

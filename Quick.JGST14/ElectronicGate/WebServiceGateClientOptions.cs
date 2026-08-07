@@ -1,6 +1,6 @@
 namespace Quick.JGST14.ElectronicGate;
 
-public class WebServiceCommunicateContextOptions
+public class WebServiceGateClientOptions
 {
     public string Url { get; set; }
     public string Namespace{get;set;}

@@ -1,8 +1,6 @@
-using System;
-
 namespace Quick.JGST14.ElectronicGate;
 
-public class TcpCommunicateContextOptions
+public class TcpGateClientOptions
 {
     public string RemoteHost { get; set; }
     public int RemotePort { get; set; } = 9005;

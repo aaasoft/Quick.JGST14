@@ -5,7 +5,7 @@ using Quick.JGST14.Utils;
 
 namespace Quick.JGST14.ElectronicGate;
 
-internal class TcpCommunicatePacket
+internal class TcpGatePacket
 {
     public const int SLIM_HEAD_SIZE = 8;
     public const int HEAD_SIZE = 38;
@@ -41,7 +41,7 @@ internal class TcpCommunicatePacket
         return ToInt32(totalLengthMark);
     }
 
-    public TcpCommunicatePacket(byte[] buffer, bool hasData)
+    public TcpGatePacket(byte[] buffer, bool hasData)
     {
         this.buffer = buffer;
 

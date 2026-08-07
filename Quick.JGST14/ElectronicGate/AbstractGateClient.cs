@@ -3,7 +3,7 @@ using System.Xml.Serialization;
 
 namespace Quick.JGST14.ElectronicGate;
 
-public abstract class AbstractCommunicateContext : ICommunicateContext
+public abstract class AbstractGateClient : IGateClient
 {
     public event EventHandler<Model_81.GATHER_INFO> GatherInfoReceived;
     public event EventHandler<Model_82.GATHER_FEEDBACK> GatherFeedbackReceived;
@@ -46,7 +46,7 @@ public abstract class AbstractCommunicateContext : ICommunicateContext
     }
 
     private static Dictionary<string, Type> modelTypeDict;
-    static AbstractCommunicateContext()
+    static AbstractGateClient()
     {
         modelTypeDict = new Dictionary<string, Type>()
         {

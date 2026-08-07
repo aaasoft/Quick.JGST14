@@ -4,12 +4,12 @@ using System.Xml.Linq;
 namespace Quick.JGST14.ElectronicGate;
 
 /// <summary>
-/// WebService通讯上下文
+/// WebService卡口客户端
 /// </summary>
-public class WebServiceCommunicateContext : AbstractCommunicateContext
+public class WebServiceGateClient : AbstractGateClient
 {
-    private WebServiceCommunicateContextOptions options;
-    public WebServiceCommunicateContext(WebServiceCommunicateContextOptions options)
+    private WebServiceGateClientOptions options;
+    public WebServiceGateClient(WebServiceGateClientOptions options)
     {
         this.options = options;
     }
