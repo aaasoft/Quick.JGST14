@@ -1,7 +1,6 @@
-using System.Runtime.InteropServices;
+using System.Buffers.Binary;
 using System.Text;
 using System.Xml.Serialization;
-using Quick.JGST14.Utils;
 
 namespace Quick.JGST14.ElectronicGate;
 
@@ -38,7 +37,7 @@ internal class TcpGatePacket
             throw new IOException($"包头标记[{BitConverter.ToString(headMark.ToArray())}]不正确。");
 
         var totalLengthMark = span.Slice(4, 4);
-        return ToInt32(totalLengthMark);
+        return BinaryPrimitives.ReadInt32LittleEndian(totalLengthMark);
     }
 
     public TcpGatePacket(byte[] buffer, bool hasData)
@@ -99,14 +98,11 @@ internal class TcpGatePacket
     {
         get
         {
-            return ByteUtils.B2I_BE(TotalLengthMemory);
+            return BinaryPrimitives.ReadInt32LittleEndian(TotalLengthMemory.Span);
         }
         set
         {
-            var tmpArray = BitConverter.GetBytes(value);
-            if (BitConverter.IsLittleEndian)
-                Array.Reverse(tmpArray);
-            tmpArray.CopyTo(TotalLengthMemory);
+            BinaryPrimitives.WriteInt32LittleEndian(TotalLengthMemory.Span,value);
         }
     }
 
@@ -156,8 +152,8 @@ internal class TcpGatePacket
     /// </summary>
     public int XmlStreamLength
     {
-        get => ToInt32(XmlStreamLengthMemory.Span);
-        set => ToSpan(value, XmlStreamLengthMemory.Span);
+        get => BinaryPrimitives.ReadInt32LittleEndian(XmlStreamLengthMemory.Span);
+        set => BinaryPrimitives.WriteInt32LittleEndian(XmlStreamLengthMemory.Span,value);
     }
 
     private Memory<byte> TailMarkMemory;
@@ -178,26 +174,6 @@ internal class TcpGatePacket
 
     private string ToString(Span<byte> span) => Encoding.Default.GetString(span);
     private void ToSpan(string value, Span<byte> span) => Encoding.Default.GetBytes(value, span);
-
-    private static int ToInt32(Span<byte> span)
-    {
-        var ret = BitConverter.ToInt32(span);
-        //如果是小端字节序，则交换
-        if (BitConverter.IsLittleEndian)
-        {
-            var rawSpan = MemoryMarshal.AsBytes(MemoryMarshal.CreateSpan(ref ret, 1));
-            rawSpan.Reverse();
-        }
-        return ret;
-    }
-
-    private void ToSpan(int value, Span<byte> span)
-    {
-        var rawSpan = MemoryMarshal.AsBytes(MemoryMarshal.CreateReadOnlySpan(ref value, 1));
-        rawSpan.CopyTo(span);
-        if (BitConverter.IsLittleEndian)
-            span.Reverse();
-    }
 
     private void AfterSetXml(int xmlStreamLength)
     {
