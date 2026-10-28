@@ -1,11 +1,13 @@
 using System.Buffers.Binary;
 using System.Text;
+using System.Xml;
 using System.Xml.Serialization;
 
 namespace Quick.JGST14.ElectronicGate;
 
 internal class TcpGatePacket
 {
+    public static Encoding encoding = Encoding.GetEncoding("GB18030");
     public const int SLIM_HEAD_SIZE = 8;
     public const int HEAD_SIZE = 38;
     /// <summary>
@@ -142,7 +144,7 @@ internal class TcpGatePacket
     public string IeFlag
     {
         get { return char.ConvertFromUtf32(IeFlagMemory.Span[0]); }
-        set { IeFlagMemory.Span[0] = Encoding.Default.GetBytes(value)[0]; }
+        set { IeFlagMemory.Span[0] = encoding.GetBytes(value)[0]; }
     }
 
     private Memory<byte> BodyMarkMemory;
@@ -172,8 +174,8 @@ internal class TcpGatePacket
         return true;
     }
 
-    private string ToString(Span<byte> span) => Encoding.Default.GetString(span);
-    private void ToSpan(string value, Span<byte> span) => Encoding.Default.GetBytes(value, span);
+    private string ToString(Span<byte> span) => encoding.GetString(span);
+    private void ToSpan(string value, Span<byte> span) => encoding.GetBytes(value, span);
 
     private void AfterSetXml(int xmlStreamLength)
     {
@@ -188,9 +190,18 @@ internal class TcpGatePacket
         TAIL_MARK.CopyTo(TailMarkMemory);
     }
 
+    public string GetXml()
+    {
+        using (var ms = new MemoryStream(buffer, HEAD_SIZE, XmlStreamLength))
+        using (var streamReader = new StreamReader(ms, encoding))
+        {
+            return streamReader.ReadToEnd();
+        }
+    }
+
     public void SetXml(string xml)
     {
-        var xmlStreamLength = Encoding.Default.GetBytes(xml, new Span<byte>(buffer, HEAD_SIZE, buffer.Length - HEAD_SIZE));
+        var xmlStreamLength = encoding.GetBytes(xml, new Span<byte>(buffer, HEAD_SIZE, buffer.Length - HEAD_SIZE));
         AfterSetXml(xmlStreamLength);
     }
 
@@ -219,11 +230,10 @@ internal class TcpGatePacket
     public T GetXmlModel<T>()
         where T : IModel
     {
-        using (var ms = new MemoryStream(buffer, HEAD_SIZE, XmlStreamLength))
-        {
-            var serializer = new XmlSerializer(typeof(T));
-            return (T)serializer.Deserialize(ms);
-        }
+        var xml = GetXml();
+        var serializer = new XmlSerializer(typeof(T));
+        using (var reader = new StringReader(xml))
+            return (T)serializer.Deserialize(reader);
     }
 
     public T GetModelInfo<T>() where T : IModel => GetXmlModel<T>();

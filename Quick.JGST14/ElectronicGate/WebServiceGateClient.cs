@@ -34,8 +34,8 @@ public class WebServiceGateClient : AbstractGateClient
         HttpResponseMessage response = await httpClient.PostAsync(options.Url, content);
         string responseXml = await response.Content.ReadAsStringAsync();
 
-        Console.WriteLine("服务返回原始xml：");
-        Console.WriteLine(responseXml);
+        options.Logger?.Invoke("服务返回原始xml：");
+        options.Logger?.Invoke(responseXml);
 
         if (!response.IsSuccessStatusCode)
             return;

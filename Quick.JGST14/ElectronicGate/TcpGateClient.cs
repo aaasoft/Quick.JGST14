@@ -54,6 +54,7 @@ public class TcpGateClient : AbstractGateClient
             await stream.ReadExactlyAsync(recvBuffer, TcpGatePacket.SLIM_HEAD_SIZE, totalLength - TcpGatePacket.SLIM_HEAD_SIZE);
             //解析包
             var packet = new TcpGatePacket(recvBuffer, true);
+            options.Logger?.Invoke("接收到XML: " + packet.GetXml());
             switch (packet.DataType)
             {
                 case DataType.GatherInfo:
@@ -79,7 +80,7 @@ public class TcpGateClient : AbstractGateClient
     private async Task beginReadClient(TcpClient tcpClient, CancellationToken cancellationToken)
     {
         var remoteEndPoint = tcpClient.Client.RemoteEndPoint.ToString();
-        options.Logger?.Invoke($"[{remoteEndPoint}]已经连接，开始从接收数据。。。");
+        options.Logger?.Invoke($"[{remoteEndPoint}]已经连接，开始接收数据。。。");
         try
         {
             using (var stream = tcpClient.GetStream())
@@ -88,7 +89,7 @@ public class TcpGateClient : AbstractGateClient
         catch (Exception ex)
         {
             tcpClient.Dispose();
-            options.Logger?.Invoke($"[{remoteEndPoint}]的连接已经断开。接收解析数据时出错，原因：{ex.Message}");
+            options.Logger?.Invoke($"[{remoteEndPoint}]的连接已经断开。接收解析数据时出错，原因：{ex}");
         }
     }
 
